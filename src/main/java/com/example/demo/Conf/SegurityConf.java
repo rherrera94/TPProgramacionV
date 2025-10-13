@@ -47,6 +47,15 @@ public class SegurityConf {
                         .requestMatchers("/api/persona/listar", "/api/persona/listarporid/**").hasAnyRole("ADMIN", "USER")
                         .requestMatchers("/api/articulo/add", "/api/articulo/actualizar", "/api/articulo/eliminar/**").hasRole("ADMIN")
                         .requestMatchers("/api/articulo/listar", "/api/articulo/listar/**", "/api/articulo/buscarpornombre/**").hasAnyRole("USER", "ADMIN")
+                        // --- ¡NUEVAS REGLAS PARA SALAS! ---
+                        .requestMatchers("/api/salas/crear", "/api/salas/borrar/**").hasRole("ADMIN") // Solo admin puede crear y borrar salas
+                        .requestMatchers("/api/salas/listar", "/api/salas/buscar/**").hasAnyRole("USER", "ADMIN") // Cualquiera puede ver las salas
+
+                        // --- ¡NUEVAS REGLAS PARA RESERVAS! ---
+                        .requestMatchers("/api/reservas/crear").hasAnyRole("USER", "ADMIN") // Un usuario normal PUEDE crear una reserva
+                        .requestMatchers("/api/reservas/listar").hasAnyRole("USER", "ADMIN") // Cualquiera puede ver las reservas
+                        // (Podríamos agregar una regla de borrar solo para admin en el futuro)
+                        // .requestMatchers("/api/reservas/borrar/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .httpBasic(httpBasic -> {})

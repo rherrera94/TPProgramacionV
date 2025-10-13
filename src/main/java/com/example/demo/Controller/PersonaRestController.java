@@ -27,7 +27,7 @@ public class PersonaRestController {
     public List<Persona> personaList(){
         return personaService.listarpersona();
     }
-    @PutMapping (value = "listarporid/{idPersona}", headers = "Accapt=application/json")
+    @GetMapping (value = "listarporid/{idPersona}", headers = "Accept=application/json")
     public Optional<Persona> buscarPorId(@PathVariable Long idPersona) {
         return personaService.buscarPorId(idPersona);
     }
