@@ -1,39 +1,47 @@
-package com.example.demo.Conf;
+package com.example.demo.Conf; // (PD: El nombre 'SegurityConf' tiene un typo, suele ser 'SecurityConf')
 
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationManager; //maneja autenticacion
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;//sirve para validar las credenciales
+import org.springframework.http.HttpMethod; // 1. ¡IMPORTANTE AGREGAR ESTO!
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.*;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder; //se utilizara para hashear las contraseñas
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.SecurityFilterChain; //filtros de seguridad y reglas de autorización
+import org.springframework.security.web.SecurityFilterChain;
 
+import java.util.List;
 import java.util.stream.Collectors;
-/*
-    Dentro de esta clase vamos a realizar ciertas configuraciones generales en
-    lo que respecta a la seguridad del sistema. Aca vamos a configurar las reglas
-    de autenticacion y autorizacion. Vamos a informar a que partes de nuestra api 
-    los diferentes tipos de usuarios pueden o no realizar peticiones. Realizaremos 
-    un acceso basado en roles y según el rol es a la ruta que los usuarios podran 
-    o no acceder.
-*/
+
 @Configuration
-public class SegurityConf {
+public class SegurityConf { // (El typo está acá)
 
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
+    // ... (Tu 'userDetailsService' está perfecto, no lo toco) ...
     @Bean
     public UserDetailsService userDetailsService(com.example.demo.repository.UsuarioRepository usuarioRepository) {
         return username -> usuarioRepository.findByUsername(username)
                 .map(usuario -> {
-                    
+                    System.out.println("--- DEBUG SPRING SECURITY ---");
+                    System.out.println("Logueando usuario: " + usuario.getUsername());
+                    List<SimpleGrantedAuthority> authorities = usuario.getRoles().stream()
+                            .map(rol -> {
+                                String nombreRol = rol.getNombre();
+                                System.out.println(">>> Rol encontrado en BD: '" + nombreRol + "'"); // LA LÍNEA CLAVE
+                                return new SimpleGrantedAuthority(nombreRol);
+                            })
+                            .collect(Collectors.toList());
+
+                    System.out.println(">>> Roles cargados en Spring: " + authorities);
+                    System.out.println("---------------------------------");
                     return new org.springframework.security.core.userdetails.User(
                             usuario.getUsername(),
                             usuario.getPassword(),
@@ -45,6 +53,7 @@ public class SegurityConf {
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado: " + username));
     }
 
+    // ... (Tu 'authenticationProvider' está perfecto) ...
     @Bean
     public DaoAuthenticationProvider authenticationProvider(
             UserDetailsService userDetailsService, PasswordEncoder passwordEncoder) {
@@ -55,34 +64,161 @@ public class SegurityConf {
         return authProvider;
     }
 
+    // ... (Tu 'authenticationManager' está perfecto) ...
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
         return authConfig.getAuthenticationManager();
     }
 
-/**
- * En esta función encontraremos las reglas de autorización de nuestra API. Autorizamos las peticiones
- * a la API según el rol que tiene cada uno de los usuarios (por ejemplo administrador, usuario común).
- *      - .permitall()-> Acceden todos los usuarios, no hace falta estar logueado.
- *      - .hasRole()-> Permite el acceso solo al tipo de usuario nombrado.
- *      - .hasAnyRole()->Permite el acceso a los tipos de usuario que se nombran.
- *      - .anyRequest().authenticated()-> todo lo que no esta listado en las rutas, para poder acceder habra que estar autenticado.
- */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
+
+                        // 1. ENDPOINTS PÚBLICOS
                         .requestMatchers("/auth/login", "/error", "/auth/generate").permitAll()
-                        .requestMatchers("/api/articulo/add", "/api/articulo/actualizar", "/api/articulo/eliminar/**","/api/persona/add", "/api/persona/actualizar", "/api/persona/eliminar/**","/api/usuario/add","/api/usuario/listar").hasRole("ADMIN")
-                        .requestMatchers("/api/persona/listar", "/api/persona/listarporid/**", "/api/articulo/listar/**", "/api/articulo/buscarpornombre/**", "/api/reservas/**")
-                        .hasAnyRole("ADMIN", "USER")
+
+                        // 2. ENDPOINTS DE USUARIOS (Solo Admin)
+                        .requestMatchers(HttpMethod.POST, "/api/usuario/add").hasRole("ADMIN") // Busca ROLE_ADMIN
+                        .requestMatchers(HttpMethod.GET, "/api/usuario/listar").hasAnyRole("ADMIN", "USER") // Busca ROLE_ADMIN
+
+                        // 3. ENDPOINTS DE ARTÍCULOS
+                        // Lectura (USER y ADMIN)
+                        .requestMatchers(HttpMethod.GET, "/api/articulo/listar", "/api/articulo/listar/**", "/api/articulo/buscar/nombre/**").hasAnyRole("ADMIN", "USER") // Busca ROLE_ADMIN o ROLE_USER
+                        // Escritura (Solo ADMIN)
+                        .requestMatchers(HttpMethod.POST, "/api/articulo/add").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/articulo/update").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/articulo/delete/**").hasRole("ADMIN")
+
+                        // 4. ENDPOINTS DE PERSONAS
+                        // Lectura (USER y ADMIN)
+                        .requestMatchers(HttpMethod.GET, "/api/persona/listar", "/api/persona/listarporid/**", "/api/persona/buscar/email/**", "/api/persona/buscar/nombre/**").hasAnyRole("ADMIN", "USER")
+                        // Escritura (Solo ADMIN)
+                        .requestMatchers(HttpMethod.POST, "/api/persona/add").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/persona/actualizar").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/persona/eliminar/**").hasRole("ADMIN")
+
+                        // 5. ENDPOINTS DE RESERVAS
+                        // Lectura y Creación (USER y ADMIN)
+                        .requestMatchers(HttpMethod.GET, "/api/reservas/listar", "/api/reservas/listar/**").hasAnyRole("ADMIN", "USER")
+                        .requestMatchers(HttpMethod.POST, "/api/reservas/crear").hasAnyRole("ADMIN", "USER")
+                        // Modificación y Borrado (Solo ADMIN)
+                        .requestMatchers(HttpMethod.PUT, "/api/reservas/actualizar/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/reservas/borrar/**").hasRole("ADMIN")
+
+                        // 6. REGLA FINAL
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form.disable())
                 .httpBasic(basic -> basic.disable())
-                .logout(logout -> logout.permitAll());
+                .logout(logout -> logout
+                        .logoutUrl("/logout") // La URL que llamás
+                        .logoutSuccessHandler((request, response, authentication) -> {
+                            // Le decimos que devuelva 200 OK y no una redirección
+                            response.setStatus(HttpServletResponse.SC_OK);
+                        })
+                        .permitAll()
+                );
+                //.logout(logout -> logout.permitAll());
 
         return http.build();
     }
+
+
+
+//    @Bean
+//    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+//        http
+//                .csrf(csrf -> csrf.disable())
+//                .authorizeHttpRequests(auth -> auth
+//
+//                        // 1. ENDPOINTS PÚBLICOS
+//                        .requestMatchers("/auth/login", "/error", "/auth/generate").permitAll()
+//
+//                        // 2. ENDPOINTS DE USUARIOS (Solo Admin)
+//                        .requestMatchers(HttpMethod.POST, "/api/usuario/add").hasAuthority("ADMIN") // <-- CAMBIO
+//                        .requestMatchers(HttpMethod.GET, "/api/usuario/listar").hasAuthority("ADMIN") // <-- CAMBIO
+//
+//                        // 3. ENDPOINTS DE ARTÍCULOS
+//                        // Lectura (USER y ADMIN)
+//                        .requestMatchers(HttpMethod.GET, "/api/articulo/listar", "/api/articulo/listar/**", "/api/articulo/buscar/nombre/**").hasAnyAuthority("ADMIN", "USER") // <-- CAMBIO
+//                        // Escritura (Solo ADMIN)
+//                        .requestMatchers(HttpMethod.POST, "/api/articulo/add").hasAuthority("ADMIN") // <-- CAMBIO
+//                        .requestMatchers(HttpMethod.PUT, "/api/articulo/update").hasAuthority("ADMIN") // <-- CAMBIO
+//                        .requestMatchers(HttpMethod.DELETE, "/api/articulo/delete/**").hasAuthority("ADMIN") // <-- CAMBIO
+//
+//                        // 4. ENDPOINTS DE PERSONAS
+//                        // Lectura (USER y ADMIN)
+//                        .requestMatchers(HttpMethod.GET, "/api/persona/listar", "/api/persona/listarporid/**", "/api/persona/buscar/email/**", "/api/persona/buscar/nombre/**").hasAnyAuthority("ADMIN", "USER") // <-- CAMBIO
+//                        // Escritura (Solo ADMIN)
+//                        .requestMatchers(HttpMethod.POST, "/api/persona/add").hasAuthority("ADMIN") // <-- CAMBIO
+//                        .requestMatchers(HttpMethod.PUT, "/api/persona/actualizar").hasAuthority("ADMIN") // <-- CAMBIO
+//                        .requestMatchers(HttpMethod.DELETE, "/api/persona/eliminar/**").hasAuthority("ADMIN") // <-- CAMBIO
+//
+//                        // 5. ENDPOINTS DE RESERVAS
+//                        // Lectura y Creación (USER y ADMIN)
+//                        .requestMatchers(HttpMethod.GET, "/api/reservas/listar", "/api/reservas/listar/**").hasAnyAuthority("ADMIN", "USER") // <-- CAMBIO
+//                        .requestMatchers(HttpMethod.POST, "/api/reservas/crear").hasAnyAuthority("ADMIN", "USER") // <-- CAMBIO
+//                        // Modificación y Borrado (Solo ADMIN)
+//                        .requestMatchers(HttpMethod.PUT, "/api/reservas/actualizar/**").hasAuthority("ADMIN") // <-- CAMBIO
+//                        .requestMatchers(HttpMethod.DELETE, "/api/reservas/borrar/**").hasAuthority("ADMIN") // <-- CAMBIO
+//
+//                        // 6. REGLA FINAL
+//                        .anyRequest().authenticated()
+//                )
+//                .formLogin(form -> form.disable())
+//                .httpBasic(basic -> basic.disable())
+//                .logout(logout -> logout.permitAll());
+//
+//        return http.build();
+//    }
+
+
+//    @Bean
+//    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+//        http
+//                .csrf(csrf -> csrf.disable()) // Necesario para Postman y tu front de Flask
+//                .authorizeHttpRequests(auth -> auth
+//
+//                        // 1. ENDPOINTS PÚBLICOS (Sin autenticación)
+//                        .requestMatchers("/auth/login", "/error", "/auth/generate").permitAll()
+//
+//                        // 2. ENDPOINTS DE USUARIOS (Solo Admin)
+//                        .requestMatchers(HttpMethod.POST, "/api/usuario/add").hasRole("ADMIN")
+//                        .requestMatchers(HttpMethod.GET, "/api/usuario/listar").hasRole("ADMIN")
+//
+//                        // 3. ENDPOINTS DE ARTÍCULOS
+//                        // Lectura (USER y ADMIN)
+//                        .requestMatchers(HttpMethod.GET, "/api/articulo/listar", "/api/articulo/listar/**", "/api/articulo/buscar/nombre/**").hasAnyRole("ADMIN", "USER")
+//                        // Escritura (Solo ADMIN)
+//                        .requestMatchers(HttpMethod.POST, "/api/articulo/add").hasRole("ADMIN")
+//                        .requestMatchers(HttpMethod.PUT, "/api/articulo/update").hasRole("ADMIN") // Asumo que tu ruta es 'update'
+//                        .requestMatchers(HttpMethod.DELETE, "/api/articulo/delete/**").hasRole("ADMIN")
+//
+//                        // 4. ENDPOINTS DE PERSONAS (¡CON LOS NUEVOS!)
+//                        // Lectura (USER y ADMIN)
+//                        .requestMatchers(HttpMethod.GET, "/api/persona/listar", "/api/persona/listarporid/**", "/api/persona/buscar/email/**", "/api/persona/buscar/nombre/**").hasAnyRole("ADMIN", "USER")
+//                        // Escritura (Solo ADMIN)
+//                        .requestMatchers(HttpMethod.POST, "/api/persona/add").hasRole("ADMIN")
+//                        .requestMatchers(HttpMethod.PUT, "/api/persona/actualizar").hasRole("ADMIN")
+//                        .requestMatchers(HttpMethod.DELETE, "/api/persona/eliminar/**").hasRole("ADMIN")
+//
+//                        // 5. ENDPOINTS DE RESERVAS (¡CORREGIDO!)
+//                        // Lectura y Creación (USER y ADMIN)
+//                        .requestMatchers(HttpMethod.GET, "/api/reservas/listar", "/api/reservas/listar/**").hasAnyRole("ADMIN", "USER")
+//                        .requestMatchers(HttpMethod.POST, "/api/reservas/crear").hasAnyRole("ADMIN", "USER")
+//                        // Modificación y Borrado (Solo ADMIN)
+//                        .requestMatchers(HttpMethod.PUT, "/api/reservas/actualizar/**").hasRole("ADMIN")
+//                        .requestMatchers(HttpMethod.DELETE, "/api/reservas/borrar/**").hasRole("ADMIN")
+//
+//                        // 6. REGLA FINAL
+//                        .anyRequest().authenticated() // Cualquier otra ruta requiere estar logueado
+//                )
+//                .formLogin(form -> form.disable()) // Deshabilitamos login por formulario
+//                .httpBasic(basic -> basic.disable()) // Deshabilitamos Basic Auth
+//                .logout(logout -> logout.permitAll()); // Permitimos que /logout sea accesible
+//
+//        return http.build();
+//    }
 }

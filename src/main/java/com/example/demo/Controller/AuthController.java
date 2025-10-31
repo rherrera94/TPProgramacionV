@@ -1,5 +1,8 @@
 package com.example.demo.controller;
 
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -16,26 +19,34 @@ public class AuthController {
     @Autowired
     private AuthenticationManager authenticationManager;
 
+
     @PostMapping("/login")
-    public Object login(@RequestParam String username,
-                        @RequestParam String password,
-                        HttpSession session) {
+    public ResponseEntity<LoginResponse> login(@RequestParam String username, // 2. Cambia el tipo de retorno
+                                               @RequestParam String password,
+                                               HttpSession session) {
         try {
-            // 🔐 Autentica el usuario con Spring Security
+            // 🔐 Autentica el usuario
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(username, password)
             );
 
-            // ✅ Guarda la sesión en el contexto de seguridad
+            // ✅ Guarda la sesión
             SecurityContextHolder.getContext().setAuthentication(authentication);
             session.setAttribute("SPRING_SECURITY_CONTEXT", SecurityContextHolder.getContext());
 
-            // 🟢 Devuelve el ID de sesión para que el front o Postman lo use como cookie
-            return new LoginResponse("Sesión iniciada correctamente", session.getId());
+            // 🟢 Devuelve 200 OK con el cuerpo de la respuesta
+            return ResponseEntity.ok(
+                    new LoginResponse("Sesión iniciada correctamente", session.getId())
+            );
 
         } catch (AuthenticationException e) {
             // 🔴 Si las credenciales no son válidas
-            return new LoginResponse("Error: credenciales inválidas", null);
+            System.out.println("Error de autenticación: " + e.getMessage()); // Corregí tu System.out
+
+            // ⬇️ ESTA ES LA LÍNEA CLAVE ⬇️
+            // Devuelve 401 UNAUTHORIZED con el cuerpo de error
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new LoginResponse("Error: credenciales inválidas", null));
         }
     }
 

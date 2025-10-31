@@ -1,5 +1,6 @@
-package com.example.demo.controller;
+package com.example.demo.Controller;
 
+import jakarta.validation.Valid;
 import com.example.demo.model.Reserva;
 import com.example.demo.service.ReservaService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,7 +30,24 @@ public class ReservaRestController {
     // Endpoint para crear una nueva reserva
     // URL: POST http://localhost:8080/api/reservas/crear
     @PostMapping("/crear")
-    public Reserva crearReserva(@RequestBody Reserva reserva){
+    public Reserva crearReserva(@Valid @RequestBody Reserva reserva){
         return reservaService.crearReserva(reserva);
     }
+
+    @PutMapping("/actualizar/{id}")
+    public Reserva actualizarReserva(
+            @PathVariable Long id,
+            @Valid @RequestBody Reserva reserva) {
+
+        // (Acá tu service debería chequear el 'id' y actualizar)
+        return reservaService.actualizarReserva(reserva);
+    }
+
+    @DeleteMapping("/borrar/{id}")
+    public void borrarReserva(@PathVariable Long id) {
+        reservaService.borrarReserva(id);
+        // Al ser void, Spring devuelve 200 OK automáticamente
+    }
+
+
 }

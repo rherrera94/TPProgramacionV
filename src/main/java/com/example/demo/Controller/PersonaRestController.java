@@ -1,6 +1,6 @@
-package com.example.demo.controller;
+package com.example.demo.Controller;
 
-
+import jakarta.validation.Valid;
 import com.example.demo.model.Persona;
 import com.example.demo.service.PersonaService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +19,7 @@ public class PersonaRestController {
     }
 
     @PostMapping (value = "add", headers = "Accept=application/json")
-    public void addperson (@RequestBody Persona persona) {
+    public void addperson (@Valid @RequestBody Persona persona) {
         personaService.addperson(persona);
     }
 
@@ -32,22 +32,22 @@ public class PersonaRestController {
         return personaService.buscarPorId(idPersona);
     }
 
-    @DeleteMapping(value = "actualizar", headers = "Accept=application/json")
-    public void actualizarPersona(@RequestBody Persona persona) {
+    @PutMapping(value = "actualizar", headers = "Accept=application/json")
+    public void actualizarPersona(@Valid @RequestBody Persona persona) {
         personaService.actualizarPersona(persona);
     }
 
-    @GetMapping(value = "eliminar/{idPersona}", headers = "Accept=application/json")
+    @DeleteMapping(value = "eliminar/{idPersona}", headers = "Accept=application/json")
     public void eliminarPersona(@PathVariable Long idPersona) {
         personaService.eliminarPersona(idPersona);
     }
 
-    @GetMapping (value = "buscarporemail(email)")
-    public List<Persona>  buscarporemail(@PathVariable String email){
+    @GetMapping (value = "/buscar/email/{email}")
+    public Optional<Persona>  buscarporemail(@PathVariable String email){
         return personaService.buscarporemail(email);
     }
 
-    @GetMapping(value = "buscarpornombre(nombre)")
+    @GetMapping(value = "/buscar/nombre/{nombre}")
     public List<Persona> buscarpornommre(@PathVariable String nombre){
         return personaService.buscarpornombre(nombre);
     }

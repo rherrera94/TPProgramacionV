@@ -26,19 +26,60 @@ public class ArticulosService {
         return articulos_repositorio.findById(idArticulo);
     }
 
-    public void addArticulo(Articulos articulo) {
+    public void marcarComoReservado(Long idArticulo){
+        Articulos articulo = articulos_repositorio.findById(idArticulo)
+                .orElseThrow(() -> new RuntimeException("Error: Articulo " + idArticulo + " no existe."));
+        articulo.setDisponible(false);
+        articulos_repositorio.save(articulo);
+    }
+
+    public void marcarComoLibre(Long idArticulo){
+        Articulos articulo = articulos_repositorio.findById(idArticulo)
+                .orElseThrow(() -> new RuntimeException("Error: Articulo " + idArticulo + " no existe."));
+
+        articulo.setDisponible(true);
+        articulos_repositorio.save(articulo);
+
+    }
+
+
+
+    public void addArticulo(Articulos articulo){
+        Optional<Articulos> existente = articulos_repositorio.findByNombre(articulo.getNombre());
+        if(existente.isPresent()){
+            throw new RuntimeException("Error: El nombre de articulo "+ articulo.getNombre() + " ya existe");
+        }
+
         articulos_repositorio.save(articulo);
     }
 
     public void updateArticulo(Articulos articulo) {
+        if(articulo.getIdArticulo() == null){
+            throw new RuntimeException("Error: Se necesita un ID para actualizar el articulo");
+        }
+
+        if(!articulos_repositorio.existsById(articulo.getIdArticulo())){
+            throw new RuntimeException("Error: El articulo no existe con ID " + articulo.getIdArticulo());
+        }
+
+        Optional<Articulos> existente = articulos_repositorio.findByNombre(articulo.getNombre());
+
+        if(existente.isPresent() && !existente.get().getIdArticulo().equals(articulo.getIdArticulo())){
+            throw new RuntimeException("Error: El nombre del articulo " + articulo.getNombre() + " ya existe");
+        }
+
         articulos_repositorio.save(articulo);
     }
 
-    public void delateArticulo(Long idArticulo) {
+    public void deleteArticulo(Long idArticulo) {
+        if(!articulos_repositorio.existsById(idArticulo)){
+            throw new RuntimeException("Error: El articulo no existe con ID: " + idArticulo);
+        }
+
         articulos_repositorio.deleteById(idArticulo);
     }
 
-    public Articulos buscarPorNombre (String nombre) {
+    public Optional<Articulos> buscarPorNombre (String nombre) {
         return articulos_repositorio.findByNombre(nombre);
     }
 

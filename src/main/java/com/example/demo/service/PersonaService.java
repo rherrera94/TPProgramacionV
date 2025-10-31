@@ -22,7 +22,15 @@ public class PersonaService {
     }
 
     public void addperson (Persona persona) {
+
+        Optional<Persona> existente = persorepo.findByEmail(persona.getEmail());
+
+        if(existente.isPresent()) {
+            throw  new RuntimeException("Error: El email " + persona.getEmail() + " ya está en uso.");
+        }
+
         persorepo.save(persona);
+
     }
 
     public List<Persona> listarpersona() {
@@ -34,16 +42,29 @@ public class PersonaService {
     }
 
     public void actualizarPersona (Persona persona) {
+
+        Optional<Persona> existente = persorepo.findByEmail(persona.getEmail());
+
+        if(existente.isPresent() && !existente.get().getIdPersona().equals(persona.getIdPersona())) {
+
+            throw new RuntimeException("Error: El email " + persona.getEmail() + " ya esta en uso por otro usuario.");
+        }
+
         persorepo.save(persona);
     }
 
 
     public void eliminarPersona(Long idPersona) {
+
+        if(!persorepo.existsById(idPersona)) {
+            throw new RuntimeException("Error: No se encontró la persona con ID: " + idPersona);
+        }
+
         persorepo.deleteById(idPersona);
     }
 
 
-    public List<Persona> buscarporemail (String email) {
+    public Optional<Persona> buscarporemail (String email) {
         return persorepo.findByEmail(email);
     }
 

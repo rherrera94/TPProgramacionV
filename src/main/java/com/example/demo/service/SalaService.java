@@ -27,11 +27,38 @@ public class SalaService {
         return sala_Repositorio.findById(id);
     }
 
-    public Sala guardarSala(Sala sala){
+    public Sala crearSala(Sala sala){
+        // 🧠 LÓGICA DE NEGOCIO:
+        // Buscamos si ya existe una sala con ese nombre
+        Optional<Sala> existente = sala_Repositorio.findByNombre(sala.getNombre());
+        if (existente.isPresent()) {
+            throw new RuntimeException("Error: El nombre de la sala '" + sala.getNombre() + "' ya está en uso.");
+        }
+
+        // Si no existe, la creamos
+        return sala_Repositorio.save(sala);
+    }
+
+    public Sala actualizarSala(Sala sala){
+        if(sala.getIdSala() == null){
+            throw new RuntimeException("Se necesita un ID para actualizar la sala.");
+        }
+        if(!sala_Repositorio.existsById(sala.getIdSala())){
+            throw new RuntimeException("Error: Sala no encontrada con ID " +  sala.getIdSala());
+        }
+
+        Optional<Sala> existente = sala_Repositorio.findByNombre(sala.getNombre());
+        if (existente.isPresent() && !existente.get().getIdSala().equals(sala.getIdSala())) {
+            throw new RuntimeException("Error: El nombre de la sala '" + sala.getNombre() + "' Ya está en uso por otra sala");
+        }
+
         return sala_Repositorio.save(sala);
     }
 
     public void borrarSala(Long id){
+        if(!sala_Repositorio.existsById(id)){
+            throw new RuntimeException("Error: Sala no encontrada con ID " +  id);
+        }
         sala_Repositorio.deleteById(id);
     }
 }

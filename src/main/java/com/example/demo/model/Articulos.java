@@ -9,6 +9,9 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
 
 @Getter
 @Setter
@@ -21,7 +24,12 @@ public class Articulos {
     @GeneratedValue
     @Column (name = "id_articulo")
     private Long idArticulo;
+
+    @NotBlank(message = "El nombre no puede estar vacío")
+    @Size(min = 2, max = 100, message = "El nombre debe tener entre 2 y 100 caracteres")
     private String nombre;
+
+
     private boolean disponible;
 
 }

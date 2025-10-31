@@ -1,5 +1,6 @@
-package com.example.demo.controller;
+package com.example.demo.Controller;
 
+import jakarta.validation.Valid;
 import com.example.demo.model.Sala;
 import com.example.demo.service.SalaService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,8 +37,13 @@ public class SalaRestController {
     // Endpoint para crear una nueva sala
     // URL: POST http://localhost:8080/api/salas/crear
     @PostMapping("/crear")
-    public Sala crearSala(@RequestBody Sala sala) {
-        return salaService.guardarSala(sala);
+    public Sala crearSala(@Valid @RequestBody Sala sala) {
+        return salaService.crearSala(sala);
+    }
+
+    @PutMapping("/actualizar")
+    public Sala actualizarSala(@Valid @RequestBody Sala sala) {
+        return salaService.actualizarSala(sala);
     }
 
     // Endpoint para borrar una sala por su ID
