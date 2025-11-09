@@ -1,4 +1,4 @@
-package com.example.demo.Controller;
+package com.example.demo.controller;
 
 import jakarta.validation.Valid;
 import com.example.demo.model.Sala;

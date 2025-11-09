@@ -1,4 +1,4 @@
-package com.example.demo.Conf; // (PD: El nombre 'SegurityConf' tiene un typo, suele ser 'SecurityConf')
+package com.example.demo.conf; // (PD: El nombre 'SegurityConf' tiene un typo, suele ser 'SecurityConf')
 
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
